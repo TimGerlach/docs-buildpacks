@@ -191,7 +191,7 @@ You must allocate enough memory to allow for the following:
 * Java heap
 * Metaspace, if using Java 8
 * PermGen, if using Java 7 or earlier
-* Thread stacks
+* Stack size per Thread
 * JVM overhead
 
 The `config/open_jdk_jre.yml` file of the [Cloud Foundry Java buildpack](https://github.com/cloudfoundry/java-buildpack) contains default
@@ -199,14 +199,48 @@ memory size and weighting settings for the JRE.
 See the [Open JDK JRE README](https://github.com/cloudfoundry/java-buildpack/blob/master/docs/jre-open_jdk_jre.md) on GitHub for an explanation of JRE memory sizes and weightings and
 how the Java buildpack calculates and allocates memory to the JRE for your app.
 
-To configure memory-related JRE options for your app, you create a custom
-buildpack and specify this buildpack in your deployment manifest.
+To configure memory-related JRE options for your app, you either create a custom buildpack and specify this buildpack in your deployment manifest 
+or you override the default memory settings of your buildpack as described 
+[here](https://github.com/cloudfoundry/java-buildpack#configuration-and-extension)
+with the properties listed  in the [Open JDK JRE README](https://github.com/cloudfoundry/java-buildpack/blob/master/docs/jre-open_jdk_jre.md).
 For more information about configuring custom buildpacks and manifests, refer to
 the [Custom Buildpacks](../../buildpacks/custom.html) and [Deploying with
 Application Manifests](../../devguide/deploy-apps/manifest.html) topics.
 
 When your app is running, you can use the `cf app APP-NAME` command to see
 memory utilization.
+
+### <a id='memory-troubleshoot'></a>Troubleshoot Out Of Memory ###
+
+If you experience memory issues with your Java application it is important to distinguish between two different
+out of memory sources: The Garden container and the JVM.
+
+If your application shows the following event the Garden container was terminated due to violations of the containers memory quota:
+
+<pre class="terminal">
+$ cf events APP-NAME
+
+time                          event         actor         description
+2016-06-20T09:18:51.00+0100   app.crash     app-name      index: 0, reason: CRASHED, exit_description: out of memory, exit_status: 255
+</pre>
+
+In that case, your JVM tried to allocate more memory than the container allows.
+
+This happens, for example, if your application uses more Threads than configured in the [Open JDK JRE README](https://github.com/cloudfoundry/java-buildpack/blob/master/docs/jre-open_jdk_jre.md).
+In scenarios where your application experiences high load and uses a high number of threads, the amount of memory required for the stack size of every single thread might lead to unexpected memory consumptions.
+You can circumvent this by configuring the memory calculator to consider the correct maximum amount of threads your application uses.
+
+In some cases, the container out of memory occurs when memory areas that are not explicitly limited by the memory calculator, such as `Code Cache` and `Compressed Class Space`, require an unexpected amount of memory.
+To approach this you can either limit the maximum by yourself using the corresponding JVM flags or by configuring the memory calculator to consider more `native` memory.
+
+
+A JVM `java.lang.OutOfMemoryError` can be detected in the logs:
+
+<pre class="terminal">
+$ cf logs APP-NAME --recent
+
+2016-06-20T09:18:51.00+0100 [APP/0] OUT java.lang.OutOfMemoryError: Metaspace   
+</pre>
 
 ### <a id='upload'></a>Troubleshoot Failed Upload ###
 
