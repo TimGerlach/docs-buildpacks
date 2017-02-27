@@ -239,40 +239,40 @@ time                          event         actor         description
 2016-06-20T09:18:51.00+0100   app.crash     app-name      index: 0, reason: CRASHED, exit_description: out of memory, exit_status: 255
 </pre>
 
-These issues tipically arise due to the JVM actually more `native` memory than the memory settings account for.
+These issues typically arise due to the JVM actually requiring more `native` memory than the memory settings account for.
 (In seldom cases, this may come from companion processes started by the JVM, e.g., via the [Process API](https://docs.oracle.com/javase/8/docs/api/java/lang/Process.html).)
 
 The terminology about what is `native` memory in Java is rather vague in most resources available online.
 In the scope of the Java buildpack and the `memory calculator`, `native` is a "catch-all" term for all memory allocated by the JVM that cannot be restrained specifically.
 With this terminology, `native` contains the memory footpring of OS-level threads, [direct NIO buffers](https://docs.oracle.com/javase/8/docs/api/java/nio/ByteBuffer.html), code cache, program counters, etc.
 As it is very hard to quantify exactly how much `native` memory a Java application needs, it is best to [measure it](https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/tooldescr007.html) with realistic workloads and fine-tune it accordingly.
-The memory calculator supports this via the [`native` setting](https://github.com/cloudfoundry/java-buildpack/blob/master/docs/jre-open_jdk_jre.md#memory-sizes)
+The memory calculator supports configuration via the [`native` setting](https://github.com/cloudfoundry/java-buildpack/blob/master/docs/jre-open_jdk_jre.md#memory-sizes)
 
 A particularly important setting to deal with memory errors at Garden level is the footprint of Java threads (as opposed to OS threads) in the JVM.
 The stack traces of Java threads are stored outside the heap.
-The JVM reserves a fixed amount of memory space for every thread, which normally one can configure with the [`-Xss](https://docs.oracle.com/cd/E13150_01/jrockit_jvm/jrockit/jrdocs/refman/optionX.html#wp999540).
+The JVM reserves a fixed amount of memory space for every thread, which normally one can configure with the [`-Xss`](https://docs.oracle.com/cd/E13150_01/jrockit_jvm/jrockit/jrdocs/refman/optionX.html#wp999540).
 The buildpack, however, does not support this option to be passed to the JVM, and instead requires the use of the [`stack` setting](https://github.com/cloudfoundry/java-buildpack/blob/master/docs/jre-open_jdk_jre.md#memory-sizes) of the memory calculator.
 
-The `stack` setting of the memory calculator configures how much space will the JVM reserve for each Java thread.
-Which, of course, needs to be multiplied by how many threads would the application need, which is specified via the [`stack_threads` setting](https://github.com/jdeoliveira/mule-cf-java-buildpack/blob/master/docs/jre-open_jdk_jre.md#memory) of the memory calculator.
+The `stack` setting of the memory calculator configures how much space the JVM will reserve for each Java thread.
+Which, of course, needs to be multiplied by how many threads the application would need, which is specified via the [`stack_threads` setting](https://github.com/jdeoliveira/mule-cf-java-buildpack/blob/master/docs/jre-open_jdk_jre.md#memory) of the memory calculator.
 For example, if the estimation of the maximum amount of threads by an application is `800` and the amount of memory to represent the deepest stacktrace of a Java thread is `512KB`, the memory calculator can be configured with:
 
 <pre>
 ---
 applications:
-- name: my-cf-app
+- name: app-name
   memory: 1G
   env:
     JBP_CONFIG_OPEN_JDK_JRE: '[memory_calculator: {stack_threads: 800, memory_sizes: {native: 150m, stack: 512k}}]'
 </pre>
 
-In the example above (which skips any setting not directly related to native memory and threads), the overall memory amount reserved by the JVM for represneting the stacks of Java threads is `800 * 512k = 400m`.
+In the example above (which skips any setting not directly related to native memory and threads), the overall memory amount reserved by the JVM for representing the stacks of Java threads is `800 * 512k = 400m`.
 Additional `150m` of the overall available `1G` are reserved anything that is not `heap`, `metaspace` or `permgen` (the "precursor" of `metaspace` on pre-Java 8 JVMs).
 
 The right settings for `stack` and `stack_threads` depend on the application's code (including, of course, the libraries it uses).
 For example, the maximum amount of threads an application may use under load depends on the application implementation.
 It may even be the case that an application has factually no upper limit, e.g., by [cavalier usage](http://dev.bizo.com/2014/06/cached-thread-pool-considered-harmlful.html) of [`CachedThreadPool` executors](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newCachedThreadPool--).
-The same, of course, applies to how "deep" can the thread stacks be, and thus how much space should the JVM reserve for each of them.
+The same, of course, applies to how "deep" the thread stacks can be, and thus how much space the JVM should reserve for each of them.
 
 ### <a id='upload'></a>Troubleshoot Failed Upload ###
 
