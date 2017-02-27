@@ -224,7 +224,7 @@ $ cf logs APP-NAME --recent
 2016-06-20T09:18:51.00+0100 [APP/0] OUT java.lang.OutOfMemoryError: Metaspace   
 </pre>
 
-In the example above, the issue comes from the JVM having an under-sized `metaspace` (where land, e.g., the bytecode of the classes).
+In the example above, the issue comes from the JVM having an under-sized `metaspace`.
 Failures in other memory pools, e.g., `heap` are of course also possible.
 This type of issues are solved by [correcting the configurations](#memory) of the JVM.
 
