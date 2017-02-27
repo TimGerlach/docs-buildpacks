@@ -263,17 +263,16 @@ applications:
 - name: my-cf-app
   memory: 1G
   env:
-    JBP_CONFIG_OPEN_JDK_JRE: '[memory_calculator: {stack_threads: 800, memory_sizes: {heap: , metaspace: 64m.., native: 150m, stack: 512k}, memory_heuristics: {metaspace: 10, native: 15, stack: 10}, memory_initials: {heap: 100%, metaspace: 100%}}]'
+    JBP_CONFIG_OPEN_JDK_JRE: '[memory_calculator: {stack_threads: 800, memory_sizes: {native: 150m, stack: 512k}}]'
 </pre>
 
-The maximum amount of memory needed to represent a stack trace depends on the application's code (including, of course, the libraries one uses).
-The upper-bound of many threads an application may use under load depends on the application implementation.
-May even be the case that an application has factually no upper limit, e.g., by [cavalier usage](http://dev.bizo.com/2014/06/cached-thread-pool-considered-harmlful.html) of [`CachedThreadPool` executors](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newCachedThreadPool--).
-(Which counts in the eyes of many as a defect from the point of view of resilience of the application.)
-(the __actual__ maximum size depends exclusively on the code of the application itself!)
+In the example above (which skips any setting not directly related to native memory and threads), the overall memory amount reserved by the JVM for represneting the stacks of Java threads is `800 * 512k = 400m`.
+Additional `150m` of the overall available `1G` are reserved anything that is not `heap`, `metaspace` or `permgen` (the "precursor" of `metaspace` on pre-Java 8 JVMs).
 
-Unfortunately, there is no cookbook that can really guide the perfect memory sizing of an application.
-[TODO] Finish
+The right settings for `stack` and `stack_threads` depend on the application's code (including, of course, the libraries it uses).
+For example, the maximum amount of threads an application may use under load depends on the application implementation.
+It may even be the case that an application has factually no upper limit, e.g., by [cavalier usage](http://dev.bizo.com/2014/06/cached-thread-pool-considered-harmlful.html) of [`CachedThreadPool` executors](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newCachedThreadPool--).
+The same, of course, applies to how "deep" can the thread stacks be, and thus how much space should the JVM reserve for each of them.
 
 ### <a id='upload'></a>Troubleshoot Failed Upload ###
 
